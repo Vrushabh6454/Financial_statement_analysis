@@ -152,13 +152,28 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     setState(prev => ({ ...prev, isLoading: true, error: null }));
 
     try {
-      await api.uploadFile(file);
+      const response = await api.uploadFile(file);
+      
+      // Check if there's a warning in the response
+      if (response.warning) {
+        setState(prev => ({
+          ...prev,
+          error: response.warning,
+          isLoading: false
+        }));
+        return;
+      }
+      
       await loadCompanies();
     } catch (error) {
       console.error('Failed to upload file', error);
+      let errorMessage = 'Failed to upload and process file';
+      if (error instanceof Error) {
+        errorMessage = error.message;
+      }
       setState(prev => ({
         ...prev,
-        error: 'Failed to upload and process file',
+        error: errorMessage,
         isLoading: false
       }));
     }

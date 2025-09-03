@@ -76,7 +76,12 @@ def upload_file():
                 balance_path = os.path.join(OUTPUT_FOLDER, 'balance.csv')
                 cashflow_path = os.path.join(OUTPUT_FOLDER, 'cashflow.csv')
                 
-                if not os.path.exists(income_path) or not os.path.exists(balance_path) or not os.path.exists(cashflow_path):
+                income_exists = os.path.exists(income_path)
+                balance_exists = os.path.exists(balance_path)
+                cashflow_exists = os.path.exists(cashflow_path)
+                
+                if not income_exists or not balance_exists or not cashflow_exists:
+                    logger.warning(f"PDF processed but no financial data found. Files created: income={income_exists}, balance={balance_exists}, cashflow={cashflow_exists}")
                     return jsonify({
                         "warning": "The PDF was processed, but no financial statement data was detected. Please upload a financial report PDF.",
                         "filename": filename
@@ -110,6 +115,10 @@ def get_companies():
             
         with open(company_map_file, 'r') as f:
             company_map = json.load(f)
+        
+        # Check if the company map is empty (no financial data was found)
+        if not company_map:
+            return jsonify({"error": "No financial data was found in the uploaded PDF. Please upload a financial statement PDF."}), 404
             
         return jsonify({
             "companies": [{"id": k, "name": v} for k, v in company_map.items()]
