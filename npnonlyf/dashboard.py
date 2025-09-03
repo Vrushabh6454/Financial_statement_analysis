@@ -10,9 +10,9 @@ import json
 import uuid
 
 # Import project modules
-from pipeline import run_pipeline as run_pipeline_main
-from utils import calculate_features, load_json
-from embeddings import FinancialEmbeddingsManager, generate_answer_from_context
+from npnonlyf.pipeline import run_pipeline as run_pipeline_main
+from npnonlyf.utils import calculate_features, load_json
+from npnonlyf.embeddings import FinancialEmbeddingsManager, generate_answer_from_context
 from crew import run_analysis_crew
 from tools import SemanticSearchTool, FinancialDataTool
 
