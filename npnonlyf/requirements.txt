@@ -31,3 +31,7 @@ argparse
 pytesseract
 fitz
 pymupdf
+flask
+flask-cors
+gunicorn
+werkzeug
