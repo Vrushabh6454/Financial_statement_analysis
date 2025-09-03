@@ -11,9 +11,9 @@ import argparse
 import uuid
 import json
 
-from utils import create_directory_structure, save_json, process_financial_data, calculate_features, map_to_canonical_field, clean_numeric_value
-from embeddings import create_embeddings_pipeline
-from qa_checks import FinancialQAChecker
+from npnonlyf.utils import create_directory_structure, save_json, process_financial_data, calculate_features, map_to_canonical_field, clean_numeric_value
+from npnonlyf.embeddings import create_embeddings_pipeline
+from npnonlyf.qa_checks import FinancialQAChecker
 
 # Configure logging
 logging.basicConfig(
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 # Import PDFParser class
-from pdf_parser import PDFParser
+from npnonlyf.pdf_parser import PDFParser
 
 
 def save_output_files(datasets: Dict[str, pd.DataFrame], output_dir: str = 'data/output') -> None:

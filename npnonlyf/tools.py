@@ -3,7 +3,7 @@
 from crewai.tools import BaseTool
 from typing import Type, ClassVar, Dict
 import pandas as pd
-from embeddings import FinancialEmbeddingsManager
+from npnonlyf.embeddings import FinancialEmbeddingsManager
 import logging
 import json
 

@@ -11,7 +11,7 @@ from sentence_transformers import SentenceTransformer
 from typing import List, Dict, Tuple, Optional, Any
 import logging
 
-from utils import save_json, load_json
+from npnonlyf.utils import save_json, load_json
 
 logger = logging.getLogger(__name__)
 
