@@ -4,7 +4,7 @@ const API_URL = 'http://localhost:5000/api';
 
 export const api = {
   // Upload PDF file
-  uploadFile: async (file: File): Promise<{ message: string; filename: string }> => {
+  uploadFile: async (file: File): Promise<{ message?: string; warning?: string; filename: string }> => {
     const formData = new FormData();
     formData.append('file', file);
 
@@ -13,7 +13,7 @@ export const api = {
       body: formData,
     });
 
-    if (!response.ok) {
+    if (!response.ok && response.status !== 202) {
       const error = await response.json();
       throw new Error(error.error || 'Failed to upload file');
     }
