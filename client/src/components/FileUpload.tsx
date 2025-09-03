@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { Upload, FileText } from "lucide-react";
+import { useAppContext } from "../context/AppContext";
 
 const FileUpload: React.FC = () => {
+    const { state, uploadFile } = useAppContext();
     const [files, setFiles] = useState<File[]>([]);
-    const [uploading, setUploading] = useState(false);
     const [message, setMessage] = useState("");
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         if (e.target.files) {
             setFiles(Array.from(e.target.files));
+            setMessage("");
         }
     };
 
@@ -16,6 +18,7 @@ const FileUpload: React.FC = () => {
         e.preventDefault();
         if (e.dataTransfer.files) {
             setFiles(Array.from(e.dataTransfer.files));
+            setMessage("");
         }
     };
 
@@ -29,28 +32,16 @@ const FileUpload: React.FC = () => {
             return;
         }
 
-        setUploading(true);
-        setMessage("");
-
         try {
-            const formData = new FormData();
-            formData.append("file", files[0]); // only first file for now
-
-            const res = await fetch("http://localhost:5000/upload", {
-                method: "POST",
-                body: formData,
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                setMessage(`✅ ${data.message} (Saved as ${data.filename})`);
-            } else {
-                setMessage(`❌ Upload failed: ${data.message}`);
-            }
+            await uploadFile(files[0]);
+            setMessage(`✅ File uploaded and processed successfully`);
+            setFiles([]);
         } catch (error) {
-            setMessage("❌ Error uploading file.");
-        } finally {
-            setUploading(false);
+            let errorMessage = "Error uploading file.";
+            if (error instanceof Error) {
+                errorMessage = error.message;
+            }
+            setMessage(`❌ ${errorMessage}`);
         }
     };
 
@@ -105,14 +96,20 @@ const FileUpload: React.FC = () => {
 
                     <button
                         onClick={handleUpload}
-                        disabled={uploading}
-                        className={`px-4 py-2 rounded text-white ${uploading ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"
+                        disabled={state.isLoading}
+                        className={`px-4 py-2 rounded text-white ${state.isLoading ? "bg-gray-400" : "bg-green-600 hover:bg-green-700"
                             }`}
                     >
-                        {uploading ? "Uploading..." : "Upload"}
+                        {state.isLoading ? "Processing..." : "Upload"}
                     </button>
 
-                    {message && (
+                    {state.error && (
+                        <p className="text-sm mt-2 text-red-600 dark:text-red-400">
+                            {state.error}
+                        </p>
+                    )}
+
+                    {message && !state.error && (
                         <p className="text-sm mt-2 text-gray-700 dark:text-gray-300">
                             {message}
                         </p>
