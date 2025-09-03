@@ -158,7 +158,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       if (response.warning) {
         setState(prev => ({
           ...prev,
-          error: response.warning,
+          error: response.warning ?? null,
           isLoading: false
         }));
         return;
