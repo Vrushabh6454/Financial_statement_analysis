@@ -71,6 +71,17 @@ def upload_file():
             )
             
             if success:
+                # Check if financial data was extracted
+                income_path = os.path.join(OUTPUT_FOLDER, 'income.csv')
+                balance_path = os.path.join(OUTPUT_FOLDER, 'balance.csv')
+                cashflow_path = os.path.join(OUTPUT_FOLDER, 'cashflow.csv')
+                
+                if not os.path.exists(income_path) or not os.path.exists(balance_path) or not os.path.exists(cashflow_path):
+                    return jsonify({
+                        "warning": "The PDF was processed, but no financial statement data was detected. Please upload a financial report PDF.",
+                        "filename": filename
+                    }), 202  # 202 Accepted but incomplete
+                
                 # Reload embeddings after pipeline run
                 global embeddings_manager
                 embeddings_manager = FinancialEmbeddingsManager(index_path=EMBEDDINGS_FOLDER)
@@ -81,7 +92,7 @@ def upload_file():
                     "filename": filename
                 }), 200
             else:
-                return jsonify({"error": "Failed to process file"}), 500
+                return jsonify({"error": "Failed to process file. This may not be a financial statement PDF."}), 400
                 
         except Exception as e:
             logger.error(f"Error processing file: {e}")

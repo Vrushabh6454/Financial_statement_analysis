@@ -99,8 +99,13 @@ def process_financial_data(financial_data: List[Dict], company_id_map: Dict) -> 
     """
     Standardize raw financial data and structure it into three core DataFrames.
     """
+    income_cols = ['company_id', 'year', 'currency'] + list(FIELD_MAPPINGS['income'].keys())
+    balance_cols = ['company_id', 'year', 'currency'] + list(FIELD_MAPPINGS['balance'].keys())
+    cashflow_cols = ['company_id', 'year', 'currency'] + list(FIELD_MAPPINGS['cashflow'].keys())
+    
     if not financial_data:
-        return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
+        logger.warning("No financial data to process. Returning empty DataFrames.")
+        return pd.DataFrame(columns=income_cols), pd.DataFrame(columns=balance_cols), pd.DataFrame(columns=cashflow_cols)
 
     temp_data = defaultdict(lambda: defaultdict(dict))
 

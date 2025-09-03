@@ -114,8 +114,23 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         logger.info("="*40)
         
         qa_checker = FinancialQAChecker()
-        qa_findings = qa_checker.run_all_checks(income_df, balance_df, cashflow_df)
-        qa_findings_df = pd.DataFrame(qa_findings)
+        
+        # Check if we have financial data to analyze
+        if income_df.empty and balance_df.empty and cashflow_df.empty:
+            logger.warning("No financial statement data found in the PDF. Skipping QA checks.")
+            qa_findings = []
+        else:
+            # Create empty DataFrames with correct columns if needed
+            if income_df.empty:
+                income_df = pd.DataFrame(columns=['company_id', 'year', 'revenue', 'net_income'])
+            if balance_df.empty:
+                balance_df = pd.DataFrame(columns=['company_id', 'year', 'total_assets', 'total_liabilities', 'total_equity'])
+            if cashflow_df.empty:
+                cashflow_df = pd.DataFrame(columns=['company_id', 'year', 'cfo', 'net_change_in_cash'])
+            
+            qa_findings = qa_checker.run_all_checks(income_df, balance_df, cashflow_df)
+        
+        qa_findings_df = pd.DataFrame(qa_findings) if qa_findings else pd.DataFrame()
         
         # Step 4: Calculate Features/Ratios
         logger.info("\n" + "="*40)
