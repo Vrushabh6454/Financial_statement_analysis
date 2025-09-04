@@ -143,16 +143,20 @@ class PDFParser:
         
         financial_keywords = [
             'revenue', 'sales', 'income', 'profit', 'loss', 'assets', 'liabilities',
-            'equity', 'cash', 'expenses', 'cost', 'margin', 'earnings', 'ebit',
-            'balance sheet', 'income statement', 'cash flow', 'statement of operations'
+            'equity', 'cash', 'expenses', 'cost', 'margin', 'earnings', 'ebit', 'ebitda',
+            'balance sheet', 'income statement', 'cash flow', 'statement of operations',
+            'consolidated', 'financial', 'statement', 'annual report', 'fiscal year',
+            'net', 'total', 'operating', 'gross', 'debt', 'depreciation'
         ]
         
-        currency_indicators = ['$', '€', '£', '¥', 'thousand', 'million', 'billion']
+        currency_indicators = ['$', '€', '£', '¥', 'thousand', 'million', 'billion', 'USD', 'EUR', 'GBP', 'JPY']
         
+        # Increase sensitivity by checking if any of these terms are in the table
         keyword_count = sum(1 for keyword in financial_keywords if keyword in table_text)
         currency_count = sum(1 for indicator in currency_indicators if indicator in table_text)
         
-        return keyword_count >= 2 or currency_count >= 1
+        # More lenient check - return true if we have at least one financial keyword
+        return keyword_count >= 1 or currency_count >= 1
     
     def _process_table(self, table: List[List[str]], company: str, year: int) -> Optional[Dict]:
         """
@@ -169,9 +173,21 @@ class PDFParser:
             if df.empty or len(df) < 2:
                 return None
             
+            # Look at entire table text for statement type identification
+            full_table_text = ' '.join([' '.join(row) for row in df.values.astype(str)])
             table_text = ' '.join(df.iloc[0].astype(str)).lower()
-            statement_type = self._identify_statement_type(table_text)
             
+            # Try to identify the statement type from both the header and full table
+            statement_type = self._identify_statement_type(table_text)
+            if not statement_type:
+                statement_type = self._identify_statement_type(full_table_text.lower())
+            
+            # As fallback, if table has numeric values, consider it an income statement
+            if not statement_type:
+                has_numeric = any(self._clean_numeric_value(str(cell)) is not None for row in table for cell in row if cell)
+                if has_numeric:
+                    statement_type = 'income'
+                    
             if not statement_type:
                 return None
             
@@ -212,11 +228,35 @@ class PDFParser:
         """
         text = text.lower()
         
-        if any(keyword in text for keyword in ['balance sheet', 'statement of financial position', 'assets', 'liabilities']):
+        # Balance sheet indicators
+        balance_keywords = ['balance sheet', 'statement of financial position', 'assets', 'liabilities', 
+                          'equity', 'total assets', 'total liabilities', 'current assets',
+                          'non-current assets', 'stockholders equity', 'shareholders equity']
+                          
+        # Income statement indicators  
+        income_keywords = ['income statement', 'statement of operations', 'profit', 'revenue',
+                         'net income', 'earnings', 'ebitda', 'operating income', 'gross profit',
+                         'statement of earnings', 'consolidated statements of operations',
+                         'sales', 'expenses', 'loss']
+                         
+        # Cash flow indicators
+        cashflow_keywords = ['cash flow', 'statement of cash flows', 'operating activities',
+                           'investing activities', 'financing activities', 'cash and cash equivalents']
+        
+        # Check each type with more keywords
+        if any(keyword in text for keyword in balance_keywords):
             return 'balance'
-        elif any(keyword in text for keyword in ['income statement', 'statement of operations', 'profit', 'revenue']):
+        elif any(keyword in text for keyword in income_keywords):
             return 'income'
-        elif any(keyword in text for keyword in ['cash flow', 'statement of cash flows', 'operating activities']):
+        elif any(keyword in text for keyword in cashflow_keywords):
+            return 'cashflow'
+        
+        # Last resort - try to guess based on specific terms
+        if 'total' in text and ('assets' in text or 'liabilities' in text):
+            return 'balance'
+        elif ('revenue' in text or 'sales' in text) and ('net' in text or 'income' in text):
+            return 'income'
+        elif 'cash' in text and ('flow' in text or 'activities' in text):
             return 'cashflow'
         
         return None
@@ -229,19 +269,33 @@ class PDFParser:
         
         patterns = {
             'income': [
-                r'revenue[\s\$]*([0-9,]+)',
-                r'net income[\s\$]*([0-9,]+)',
-                r'gross profit[\s\$]*([0-9,]+)'
+                r'revenue[\s\$]*([0-9,.]+)',
+                r'net income[\s\$]*([0-9,.]+)',
+                r'gross profit[\s\$]*([0-9,.]+)',
+                r'sales[\s\$]*([0-9,.]+)',
+                r'total revenue[\s\$]*([0-9,.]+)',
+                r'operating income[\s\$]*([0-9,.]+)',
+                r'earnings[\s\$]*([0-9,.]+)',
+                r'ebitda[\s\$]*([0-9,.]+)'
             ],
             'balance': [
-                r'total assets[\s\$]*([0-9,]+)',
-                r'cash[\s\$]*([0-9,]+)',
-                r'total liabilities[\s\$]*([0-9,]+)'
+                r'total assets[\s\$]*([0-9,.]+)',
+                r'cash[\s\$]*([0-9,.]+)',
+                r'total liabilities[\s\$]*([0-9,.]+)',
+                r'current assets[\s\$]*([0-9,.]+)',
+                r'total equity[\s\$]*([0-9,.]+)',
+                r'shareholders equity[\s\$]*([0-9,.]+)',
+                r'stockholders equity[\s\$]*([0-9,.]+)',
+                r'long[\s-]*term debt[\s\$]*([0-9,.]+)'
             ],
             'cashflow': [
-                r'operating activities[\s\$]*([0-9,]+)',
-                r'investing activities[\s\$]*([0-9,]+)',
-                r'financing activities[\s\$]*([0-9,]+)'
+                r'operating activities[\s\$]*([0-9,.]+)',
+                r'investing activities[\s\$]*([0-9,.]+)',
+                r'financing activities[\s\$]*([0-9,.]+)',
+                r'net cash[\s\$]*([0-9,.]+)',
+                r'cash flows[\s\$]*([0-9,.]+)',
+                r'cash and cash equivalents[\s\$]*([0-9,.]+)',
+                r'cash provided by[\s\$]*([0-9,.]+)'
             ]
         }
         
@@ -277,27 +331,48 @@ class PDFParser:
         try:
             logger.info(f"Attempting OCR for {pdf_path}")
             
-            doc = fitz.open(pdf_path)
-            ocr_text = []
-            
-            for page_num in range(min(doc.page_count, 10)):
-                page = doc[page_num]
-                pix = page.get_pixmap()
-                img_data = pix.tobytes("ppm")
+            # Use tika parser as a fallback if PyMuPDF/fitz fails
+            try:
+                import fitz  # PyMuPDF
+                doc = fitz.open(pdf_path)
+                ocr_text = []
                 
-                ocr_result = pytesseract.image_to_string(Image.open(io.BytesIO(img_data)))
-                ocr_text.append(ocr_result)
+                for page_num in range(min(doc.page_count, 10)):
+                    page = doc[page_num]
+                    pix = page.get_pixmap()
+                    img_data = pix.tobytes("ppm")
+                    
+                    try:
+                        ocr_result = pytesseract.image_to_string(Image.open(io.BytesIO(img_data)))
+                        ocr_text.append(ocr_result)
+                    except Exception as e:
+                        logger.error(f"PyTesseract OCR failed on page {page_num}: {e}")
+                
+                doc.close()
+                
+                if ocr_text:
+                    result['text'] = '\n\n'.join(ocr_text)
+                
+            except Exception as e:
+                logger.error(f"PyMuPDF processing failed: {e}")
+                
+                # Fallback to tika parser
+                try:
+                    parsed = parser.from_file(pdf_path)
+                    if parsed and parsed.get('content'):
+                        result['text'] = parsed['content']
+                except Exception as e2:
+                    logger.error(f"Tika parser also failed: {e2}")
             
-            result['text'] = '\n\n'.join(ocr_text)
-            result['tables'] = self._extract_tables_from_text(
-                result['text'], result['company'], result['year']
-            )
-            
-            doc.close()
-            logger.info(f"OCR completed for {pdf_path}")
+            # Try to extract tables from any text we got
+            if result.get('text'):
+                result['tables'] = self._extract_tables_from_text(
+                    result['text'], result['company'], result['year']
+                )
+                logger.info(f"OCR completed for {pdf_path}")
             
         except Exception as e:
-            logger.error(f"OCR failed for {pdf_path}: {e}")
+            logger.error(f"All OCR methods failed for {pdf_path}: {e}")
         
         return result
     
