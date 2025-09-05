@@ -6,7 +6,6 @@ import os
 import re
 import pandas as pd
 import pytesseract
-from tika import parser
 import io
 from PIL import Image
 from typing import Dict, List, Tuple, Optional, Any
@@ -15,8 +14,15 @@ import uuid
 import pymupdf
 import warnings
 
-# Suppress Tika warnings
-warnings.filterwarnings('ignore', category=UserWarning, message='Tika server is not running.*')
+# Try to import tika, but make it optional
+try:
+    from tika import parser
+    TIKA_AVAILABLE = True
+    # Suppress Tika warnings
+    warnings.filterwarnings('ignore', category=UserWarning, message='Tika server is not running.*')
+except ImportError:
+    TIKA_AVAILABLE = False
+    parser = None
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -260,12 +266,15 @@ class PDFParser:
         }
         
         try:
-            parsed = parser.from_file(pdf_path)
-            if parsed and parsed.get('content'):
-                result['text'] = parsed['content']
-                result['tables'] = self._extract_tables_from_text(
-                    result['text'], result['company'], result['year']
-                )
+            if TIKA_AVAILABLE and parser:
+                parsed = parser.from_file(pdf_path)
+                if parsed and parsed.get('content'):
+                    result['text'] = parsed['content']
+                    result['tables'] = self._extract_tables_from_text(
+                        result['text'], result['company'], result['year']
+                    )
+            else:
+                logger.warning("Tika not available, skipping tika parsing")
             
             # Get page count
             try:
