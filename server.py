@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 import os
 import uuid
@@ -9,6 +9,9 @@ from embeddings import FinancialEmbeddingsManager
 import pandas as pd
 import numpy as np
 import json
+import threading
+import time
+from queue import Queue
 
 # Configure logging
 logging.basicConfig(
@@ -30,6 +33,9 @@ UPLOAD_FOLDER = os.path.join(BASE_DIR, 'data', 'pdfs')
 OUTPUT_FOLDER = os.path.join(BASE_DIR, 'data', 'output')
 EMBEDDINGS_FOLDER = os.path.join(BASE_DIR, 'data', 'embeddings')
 ALLOWED_EXTENSIONS = {'pdf'}
+
+# Progress tracking
+progress_data = {}  # {session_id: {"progress": 0-100, "status": "message", "completed": False}}
 
 # Ensure directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
@@ -89,60 +95,107 @@ def upload_file():
         filepath = os.path.join(UPLOAD_FOLDER, filename)
         file.save(filepath)
         
-        logger.info(f"File uploaded: {filename}")
+        # Create session ID for progress tracking
+        session_id = str(uuid.uuid4())
         
-        # Run the pipeline on the uploaded file
-        try:
-            success = run_pipeline(
-                pdf_directory=UPLOAD_FOLDER,
-                output_directory=OUTPUT_FOLDER,
-                embeddings_directory=EMBEDDINGS_FOLDER,
-                parser_engine='pymupdf'
-            )
-            
-            if success:
-                # Check if financial data was extracted
-                income_path = os.path.join(OUTPUT_FOLDER, 'income.csv')
-                balance_path = os.path.join(OUTPUT_FOLDER, 'balance.csv')
-                cashflow_path = os.path.join(OUTPUT_FOLDER, 'cashflow.csv')
-                company_map_path = os.path.join(OUTPUT_FOLDER, 'company_map.json')
+        # Initialize progress tracking
+        progress_data[session_id] = {
+            "progress": 0,
+            "status": "Starting PDF processing...",
+            "completed": False
+        }
+        
+        logger.info(f"File uploaded: {filename}, Session ID: {session_id}")
+        
+        # Start processing in background thread
+        def process_file():
+            global embeddings_manager, embeddings_ready
+            try:
+                # Update progress: Starting
+                progress_data[session_id].update({
+                    "progress": 5,
+                    "status": "Starting PDF processing..."
+                })
                 
-                income_exists = os.path.exists(income_path)
-                balance_exists = os.path.exists(balance_path)
-                cashflow_exists = os.path.exists(cashflow_path)
-                company_map_exists = os.path.exists(company_map_path)
+                # Create progress callback function
+                def progress_callback(progress, status):
+                    if session_id in progress_data:
+                        progress_data[session_id].update({
+                            "progress": int(progress),
+                            "status": status
+                        })
                 
-                # Check if we have at least some financial data AND a company map
-                has_some_financial_data = income_exists or balance_exists or cashflow_exists
+                success = run_pipeline(
+                    pdf_directory=UPLOAD_FOLDER,
+                    output_directory=OUTPUT_FOLDER,
+                    embeddings_directory=EMBEDDINGS_FOLDER,
+                    parser_engine='pymupdf',
+                    progress_callback=progress_callback
+                )
                 
-                if not has_some_financial_data or not company_map_exists:
-                    logger.warning(f"PDF processed but no financial data found. Files created: income={income_exists}, balance={balance_exists}, cashflow={cashflow_exists}, company_map={company_map_exists}")
-                    return jsonify({
-                        "warning": "The PDF was processed, but no financial statement data was detected. Please upload a financial report PDF.",
-                        "filename": filename
-                    }), 202  # 202 Accepted but incomplete
-                
-                # Reload embeddings after pipeline run
-                global embeddings_manager, embeddings_ready
-                try:
-                    embeddings_manager = FinancialEmbeddingsManager(index_path=EMBEDDINGS_FOLDER)
-                    embeddings_manager.load_index_and_metadata()
-                    embeddings_ready = True
-                    logger.info("Embeddings reloaded successfully after upload")
-                except Exception as e:
-                    logger.warning(f"Failed to reload embeddings after upload: {e}")
-                    embeddings_ready = False
-                
-                return jsonify({
-                    "message": "File processed successfully",
-                    "filename": filename
-                }), 200
-            else:
-                return jsonify({"error": "Failed to process file. This may not be a financial statement PDF."}), 400
-                
-        except Exception as e:
-            logger.error(f"Error processing file: {e}")
-            return jsonify({"error": f"Error processing file: {str(e)}"}), 500
+                if success:
+                    # Check if financial data was extracted
+                    income_path = os.path.join(OUTPUT_FOLDER, 'income.csv')
+                    balance_path = os.path.join(OUTPUT_FOLDER, 'balance.csv')
+                    cashflow_path = os.path.join(OUTPUT_FOLDER, 'cashflow.csv')
+                    company_map_path = os.path.join(OUTPUT_FOLDER, 'company_map.json')
+                    
+                    income_exists = os.path.exists(income_path)
+                    balance_exists = os.path.exists(balance_path)
+                    cashflow_exists = os.path.exists(cashflow_path)
+                    company_map_exists = os.path.exists(company_map_path)
+                    
+                    # Check if we have at least some financial data AND a company map
+                    has_some_financial_data = income_exists or balance_exists or cashflow_exists
+                    
+                    if has_some_financial_data and company_map_exists:
+                        # Reload embeddings after pipeline run
+                        try:
+                            embeddings_manager = FinancialEmbeddingsManager(index_path=EMBEDDINGS_FOLDER)
+                            embeddings_manager.load_index_and_metadata()
+                            embeddings_ready = True
+                            logger.info("Embeddings reloaded successfully after upload")
+                        except Exception as e:
+                            logger.warning(f"Failed to reload embeddings after upload: {e}")
+                            embeddings_ready = False
+                        
+                        progress_data[session_id].update({
+                            "progress": 100,
+                            "status": "Processing completed successfully!",
+                            "completed": True
+                        })
+                    else:
+                        progress_data[session_id].update({
+                            "progress": 100,
+                            "status": "PDF processed but no financial data found",
+                            "completed": True
+                        })
+                else:
+                    progress_data[session_id].update({
+                        "progress": 100,
+                        "status": "Failed to process PDF file",
+                        "completed": True
+                    })
+                    
+            except Exception as e:
+                logger.error(f"Error processing file: {e}")
+                progress_data[session_id].update({
+                    "progress": 100,
+                    "status": f"Error: {str(e)}",
+                    "completed": True
+                })
+        
+        # Start background processing
+        thread = threading.Thread(target=process_file)
+        thread.daemon = True
+        thread.start()
+        
+        # Return session ID immediately
+        return jsonify({
+            "message": "File upload started",
+            "session_id": session_id,
+            "filename": filename
+        }), 202
     
     return jsonify({"error": "Invalid file type"}), 400
 
@@ -334,6 +387,36 @@ def search_notes():
             "error": "Error during search",
             "details": f"An error occurred: {str(e)}. Please try a different query or check if embeddings are properly initialized."
         }), 500
+
+@app.route('/api/progress/<session_id>')
+def get_progress(session_id):
+    """Server-Sent Events endpoint for progress tracking"""
+    def generate():
+        while True:
+            if session_id in progress_data:
+                data = progress_data[session_id]
+                yield f"data: {json.dumps(data)}\n\n"
+                
+                # If completed, stop streaming
+                if data.get('completed', False):
+                    # Clean up after a delay
+                    threading.Timer(5.0, lambda: progress_data.pop(session_id, None)).start()
+                    break
+            else:
+                yield f"data: {json.dumps({'progress': 0, 'status': 'Waiting...', 'completed': False})}\n\n"
+            
+            time.sleep(0.5)  # Update every 500ms
+    
+    return Response(
+        generate(),
+        mimetype='text/event-stream',
+        headers={
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Cache-Control'
+        }
+    )
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

@@ -52,7 +52,8 @@ def save_output_files(datasets: Dict[str, pd.DataFrame], output_dir: str = 'data
 def run_pipeline(pdf_directory: str = 'data/pdfs', 
                 output_directory: str = 'data/output',
                 embeddings_directory: str = 'data/embeddings',
-                parser_engine: str = 'pymupdf') -> bool:
+                parser_engine: str = 'pymupdf',
+                progress_callback=None) -> bool:
     """
     Run the complete financial analysis pipeline.
     """
@@ -61,12 +62,18 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         logger.info("STARTING FINANCIAL STATEMENT ANALYSIS PIPELINE")
         logger.info("=" * 60)
         
+        if progress_callback:
+            progress_callback(5, "Initializing pipeline...")
+        
         create_directory_structure()
         
         # Step 1: PDF Processing
         logger.info("\n" + "="*40)
         logger.info("STEP 1: PDF PROCESSING")
         logger.info("="*40)
+        
+        if progress_callback:
+            progress_callback(10, "Starting PDF processing...")
         
         if not os.path.exists(pdf_directory):
             logger.error(f"PDF directory not found: {pdf_directory}")
@@ -79,12 +86,21 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         
         logger.info(f"Found {len(pdf_files)} PDF files to process")
         
+        if progress_callback:
+            progress_callback(15, f"Processing {len(pdf_files)} PDF files...")
+        
         parser = PDFParser(parser_engine=parser_engine)
         financial_data = []
         notes_data = []
         
-        for pdf_file in pdf_files:
+        for i, pdf_file in enumerate(pdf_files):
             pdf_path = os.path.join(pdf_directory, pdf_file)
+            
+            # Update progress for each PDF
+            progress_percent = 15 + (i / len(pdf_files)) * 30  # 15% to 45%
+            if progress_callback:
+                progress_callback(progress_percent, f"Processing {pdf_file}...")
+            
             try:
                 content = parser.extract_pdf_content(pdf_path)
                 if content and isinstance(content, dict):
@@ -104,6 +120,9 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
             logger.error("No data extracted from PDFs")
             return False
         
+        if progress_callback:
+            progress_callback(50, "Normalizing and structuring data...")
+        
         # Step 2: Data Normalization & Structuring
         logger.info("\n" + "="*40)
         logger.info("STEP 2: DATA NORMALIZATION & STRUCTURING")
@@ -111,6 +130,9 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         
         company_id_map = {}
         income_df, balance_df, cashflow_df = process_financial_data(financial_data, company_id_map)
+        
+        if progress_callback:
+            progress_callback(65, "Running quality assurance checks...")
         
         # Step 3: QA Checks
         logger.info("\n" + "="*40)
@@ -121,6 +143,9 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         qa_findings = qa_checker.run_all_checks(income_df, balance_df, cashflow_df)
         qa_findings_df = pd.DataFrame(qa_findings)
         
+        if progress_callback:
+            progress_callback(75, "Calculating financial features and ratios...")
+        
         # Step 4: Calculate Features/Ratios
         logger.info("\n" + "="*40)
         logger.info("STEP 4: CALCULATING FINANCIAL FEATURES")
@@ -128,6 +153,9 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         
         features_df = calculate_features(income_df, balance_df, cashflow_df)
 
+        if progress_callback:
+            progress_callback(85, "Creating embeddings for text analysis...")
+        
         # Step 5: Create Notes & Embeddings Dataset
         logger.info("\n" + "="*40)
         logger.info("STEP 5: CREATING NOTES & EMBEDDINGS")
@@ -143,6 +171,9 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
             logger.info("Vector embeddings created successfully")
         else:
             logger.warning("No notes data available for embeddings")
+        
+        if progress_callback:
+            progress_callback(95, "Saving output files...")
         
         # Step 6: Save All Output Files
         logger.info("\n" + "="*40)
@@ -169,6 +200,9 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         logger.info("\n" + "="*60)
         logger.info("PIPELINE COMPLETED SUCCESSFULLY!")
         logger.info("="*60)
+        
+        if progress_callback:
+            progress_callback(100, "Processing completed successfully!")
         
         return True
         
