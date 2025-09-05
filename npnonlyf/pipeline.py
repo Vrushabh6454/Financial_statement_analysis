@@ -11,7 +11,8 @@ import argparse
 import uuid
 import json
 
-from utils import create_directory_structure, save_json, process_financial_data, calculate_features, map_to_canonical_field, clean_numeric_value
+from utils import save_json, process_financial_data, calculate_features, map_to_canonical_field, clean_numeric_value
+from setup_directories import setup_directories
 from embeddings import create_embeddings_pipeline
 from qa_checks import FinancialQAChecker
 
@@ -61,7 +62,9 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         logger.info("STARTING FINANCIAL STATEMENT ANALYSIS PIPELINE")
         logger.info("=" * 60)
         
-        create_directory_structure()
+        # Set up directories and get the correct paths
+        data_paths = setup_directories(force_root=True)
+        logger.info(f"Using data paths: {data_paths}")
         
         # Step 1: PDF Processing
         logger.info("\n" + "="*40)

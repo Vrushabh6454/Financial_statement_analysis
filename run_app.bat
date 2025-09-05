@@ -83,10 +83,14 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-echo Creating data directories...
-if not exist data\pdfs mkdir data\pdfs
-if not exist data\output mkdir data\output
-if not exist data\embeddings mkdir data\embeddings
+echo Setting up data directories...
+python npnonlyf\setup_directories.py --force-root
+if %errorlevel% neq 0 (
+    echo WARNING: Directory setup script encountered issues. Falling back to basic directory creation.
+    if not exist data\pdfs mkdir data\pdfs
+    if not exist data\output mkdir data\output
+    if not exist data\embeddings mkdir data\embeddings
+)
 
 echo Installing Node dependencies...
 cd client
