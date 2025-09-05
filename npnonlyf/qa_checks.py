@@ -47,30 +47,12 @@ class FinancialQAChecker:
         
         logger.info("Starting comprehensive QA checks...")
         
-        # Check if we have any data with 'company_id' column
-        if (income_df.empty or 'company_id' not in income_df.columns) and \
-           (balance_df.empty or 'company_id' not in balance_df.columns) and \
-           (cashflow_df.empty or 'company_id' not in cashflow_df.columns):
-            logger.warning("No valid financial data with company_id found. Skipping QA checks.")
-            return []
-            
-        # Get unique company IDs from all dataframes
-        companies = set()
-        if not income_df.empty and 'company_id' in income_df.columns:
-            companies.update(income_df['company_id'].unique())
-        if not balance_df.empty and 'company_id' in balance_df.columns:
-            companies.update(balance_df['company_id'].unique())
-        if not cashflow_df.empty and 'company_id' in cashflow_df.columns:
-            companies.update(cashflow_df['company_id'].unique())
-            
-        if not companies:
-            logger.warning("No companies found in the data. Skipping QA checks.")
-            return []
-            
+        companies = set(income_df['company_id'].unique()) | set(balance_df['company_id'].unique()) | set(cashflow_df['company_id'].unique())
+        
         for company_id in companies:
-            company_income = income_df[income_df['company_id'] == company_id] if not income_df.empty and 'company_id' in income_df.columns else pd.DataFrame()
-            company_balance = balance_df[balance_df['company_id'] == company_id] if not balance_df.empty and 'company_id' in balance_df.columns else pd.DataFrame()
-            company_cashflow = cashflow_df[cashflow_df['company_id'] == company_id] if not cashflow_df.empty and 'company_id' in cashflow_df.columns else pd.DataFrame()
+            company_income = income_df[income_df['company_id'] == company_id]
+            company_balance = balance_df[balance_df['company_id'] == company_id]
+            company_cashflow = cashflow_df[cashflow_df['company_id'] == company_id]
             
             years = sorted(list(set(company_income['year'].unique()) | set(company_balance['year'].unique()) | set(company_cashflow['year'].unique())))
             

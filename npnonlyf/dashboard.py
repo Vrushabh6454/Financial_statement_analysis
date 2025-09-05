@@ -10,9 +10,9 @@ import json
 import uuid
 
 # Import project modules
-from npnonlyf.pipeline import run_pipeline as run_pipeline_main
-from npnonlyf.utils import calculate_features, load_json
-from npnonlyf.embeddings import FinancialEmbeddingsManager, generate_answer_from_context
+from pipeline import run_pipeline as run_pipeline_main
+from utils import calculate_features, load_json
+from embeddings import FinancialEmbeddingsManager, generate_answer_from_context
 from crew import run_analysis_crew
 from tools import SemanticSearchTool, FinancialDataTool
 
@@ -61,16 +61,24 @@ st.markdown("""
 def handle_file_upload_and_pipeline():
     st.header("Upload Financial Reports 📁")
     uploaded_files = st.file_uploader("Upload PDF Annual Reports", type="pdf", accept_multiple_files=True)
+    
+    # New dropdown for parser engine selection
+    parser_engine = st.selectbox(
+        "Select PDF Parsing Engine",
+        options=['pymupdf', 'tesseract', 'tika'],
+        help="Choose the primary engine for PDF text and table extraction."
+    )
+
     if uploaded_files:
         if st.button("🚀 Run Analysis Pipeline"):
-            with st.spinner("Processing PDFs and running analysis pipeline..."):
+            with st.spinner(f"Processing PDFs with {parser_engine} and running analysis pipeline..."):
                 pdf_dir = "temp_pdfs"
                 os.makedirs(pdf_dir, exist_ok=True)
                 for uploaded_file in uploaded_files:
                     with open(os.path.join(pdf_dir, uploaded_file.name), "wb") as f:
                         f.write(uploaded_file.getbuffer())
 
-                success = run_pipeline_main(pdf_directory=pdf_dir)
+                success = run_pipeline_main(pdf_directory=pdf_dir, parser_engine=parser_engine)
                 
                 if success:
                     st.success("Pipeline completed! Data is ready for analysis.")

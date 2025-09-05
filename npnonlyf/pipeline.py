@@ -11,9 +11,9 @@ import argparse
 import uuid
 import json
 
-from npnonlyf.utils import create_directory_structure, save_json, process_financial_data, calculate_features, map_to_canonical_field, clean_numeric_value
-from npnonlyf.embeddings import create_embeddings_pipeline
-from npnonlyf.qa_checks import FinancialQAChecker
+from utils import create_directory_structure, save_json, process_financial_data, calculate_features, map_to_canonical_field, clean_numeric_value
+from embeddings import create_embeddings_pipeline
+from qa_checks import FinancialQAChecker
 
 # Configure logging
 logging.basicConfig(
@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 
 # Import PDFParser class
-from npnonlyf.pdf_parser import PDFParser
+from pdf_parser import PDFParser
 
 
 def save_output_files(datasets: Dict[str, pd.DataFrame], output_dir: str = 'data/output') -> None:
@@ -52,7 +52,7 @@ def save_output_files(datasets: Dict[str, pd.DataFrame], output_dir: str = 'data
 def run_pipeline(pdf_directory: str = 'data/pdfs', 
                 output_directory: str = 'data/output',
                 embeddings_directory: str = 'data/embeddings',
-                enable_ocr: bool = True) -> bool:
+                parser_engine: str = 'pymupdf') -> bool:
     """
     Run the complete financial analysis pipeline.
     """
@@ -79,7 +79,7 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         
         logger.info(f"Found {len(pdf_files)} PDF files to process")
         
-        parser = PDFParser(ocr_enabled=enable_ocr)
+        parser = PDFParser(parser_engine=parser_engine)
         financial_data = []
         notes_data = []
         
@@ -87,11 +87,15 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
             pdf_path = os.path.join(pdf_directory, pdf_file)
             try:
                 content = parser.extract_pdf_content(pdf_path)
-                for table in content['tables']:
-                    financial_data.extend(table['data'])
-                notes_chunks = parser.extract_notes_text(content)
-                notes_data.extend(notes_chunks)
-                logger.info(f"Processed {pdf_file}: {len(content['tables'])} tables, {len(notes_chunks)} text chunks")
+                if content and isinstance(content, dict):
+                    for table in content['tables']:
+                        financial_data.extend(table['data'])
+                    notes_chunks = parser.extract_notes_text(content)
+                    notes_data.extend(notes_chunks)
+                    logger.info(f"Processed {pdf_file}: {len(content['tables'])} tables, {len(notes_chunks)} text chunks")
+                else:
+                    logger.warning(f"Skipping {pdf_file}: Could not extract content or invalid content format.")
+
             except Exception as e:
                 logger.error(f"Failed to process {pdf_file}: {e}")
                 continue
@@ -114,60 +118,8 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         logger.info("="*40)
         
         qa_checker = FinancialQAChecker()
-        
-        # Create empty DataFrames with correct columns if needed
-        if income_df.empty:
-            logger.warning("No income statement data found. Creating empty DataFrame.")
-            income_df = pd.DataFrame(columns=['company_id', 'year', 'revenue', 'net_income'])
-        if balance_df.empty:
-            logger.warning("No balance sheet data found. Creating empty DataFrame.")
-            balance_df = pd.DataFrame(columns=['company_id', 'year', 'total_assets', 'total_liabilities', 'total_equity'])
-        if cashflow_df.empty:
-            logger.warning("No cash flow data found. Creating empty DataFrame.")
-            cashflow_df = pd.DataFrame(columns=['company_id', 'year', 'cfo', 'net_change_in_cash'])
-        
-        # Check if we have enough financial data to analyze
-        if income_df.empty and balance_df.empty and cashflow_df.empty:
-            logger.warning("No financial statement data found in the PDF. Skipping QA checks.")
-            qa_findings = []
-            
-            # Add dummy data for testing/demo purposes
-            company_id = str(uuid.uuid4())
-            company_name = "Sample Company"
-            company_id_map[company_name] = company_id
-            
-            current_year = 2023
-            
-            # Create sample income statement
-            income_df = pd.DataFrame({
-                'company_id': [company_id, company_id],
-                'year': [current_year, current_year-1],
-                'revenue': [100000, 90000],
-                'net_income': [15000, 12000]
-            })
-            
-            # Create sample balance sheet
-            balance_df = pd.DataFrame({
-                'company_id': [company_id, company_id],
-                'year': [current_year, current_year-1],
-                'total_assets': [500000, 450000],
-                'total_liabilities': [300000, 280000],
-                'total_equity': [200000, 170000]
-            })
-            
-            # Create sample cash flow
-            cashflow_df = pd.DataFrame({
-                'company_id': [company_id, company_id],
-                'year': [current_year, current_year-1],
-                'cfo': [25000, 22000],
-                'net_change_in_cash': [10000, 8000]
-            })
-            
-            logger.info(f"Added sample financial data for '{company_name}' for demonstration purposes")
-        else:
-            qa_findings = qa_checker.run_all_checks(income_df, balance_df, cashflow_df)
-        
-        qa_findings_df = pd.DataFrame(qa_findings) if qa_findings else pd.DataFrame()
+        qa_findings = qa_checker.run_all_checks(income_df, balance_df, cashflow_df)
+        qa_findings_df = pd.DataFrame(qa_findings)
         
         # Step 4: Calculate Features/Ratios
         logger.info("\n" + "="*40)
@@ -234,10 +186,11 @@ def main():
                        help='Directory containing PDF files (default: data/pdfs)')
     parser.add_argument('--output-dir', default='data/output',
                        help='Output directory for CSV files (default: data/output)')
-    parser.add_argument('--embeddings-dir', default='data/embeddings',
+    parser.add_argument('--embeddings-dir', default='data/embeddings',\
                        help='Directory for embeddings (default: data/embeddings)')
-    parser.add_argument('--no-ocr', action='store_true',
-                       help='Disable OCR for scanned PDFs')
+    parser.add_argument('--parser-engine', default='pymupdf',
+                       choices=['pymupdf', 'tesseract', 'tika'],
+                       help='PDF parsing engine to use (default: pymupdf)')
     parser.add_argument('--log-level', default='INFO', 
                        choices=['DEBUG', 'INFO', 'WARNING', 'ERROR'],
                        help='Logging level (default: INFO)')
@@ -252,7 +205,7 @@ def main():
         pdf_directory=args.pdf_dir,
         output_directory=args.output_dir,
         embeddings_directory=args.embeddings_dir,
-        enable_ocr=not args.no_ocr
+        parser_engine=args.parser_engine
     )
     
     if success:
