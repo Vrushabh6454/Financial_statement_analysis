@@ -1,0 +1,6 @@
+company_id,year,currency,revenue,cost_of_goods_sold,gross_profit,operating_expenses,operating_income,interest_expense,pretax_income,income_tax,net_income,eps_basic,eps_diluted
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2023,USD,100.0,,,,8.3,2.3,6.4,-0.9,7.3,,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2024,USD,68571.0,,,,9115.0,1111.0,7164.0,-16.0,5495.0,15.23,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2025,USD,72429.0,,,,8975.0,1700.0,7685.0,-53.0,8279.0,20.54,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2026,USD,439695.0,,,,65848.0,4999.0,33780.0,10502.0,34611.0,,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2027,USD,434016.0,,,,68831.0,7642.0,28429.0,-4024.0,38130.0,,

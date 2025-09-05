@@ -57,17 +57,11 @@ if %errorlevel% neq 0 (
     exit /b 1
 )
 
-REM Delete existing venv if it exists to ensure clean environment
-if exist venv (
-    echo Removing existing virtual environment...
-    rd /s /q venv
-)
-
-REM Create fresh virtual environment
-echo Creating Python virtual environment...
-python -m venv venv
+REM Use the setup environment script
+echo Setting up Python environment...
+call setup_env.bat
 if %errorlevel% neq 0 (
-    echo ERROR: Failed to create virtual environment.
+    echo ERROR: Failed to set up Python environment.
     exit /b 1
 )
 
@@ -75,21 +69,17 @@ REM Activate the virtual environment
 echo Activating virtual environment...
 call venv\Scripts\activate.bat
 
-echo Installing Python dependencies in virtual environment...
-pip install -r npnonlyf\requirements.txt
-if %errorlevel% neq 0 (
-    echo ERROR: Failed to install Python dependencies.
-    call venv\Scripts\deactivate.bat
-    exit /b 1
-)
-
 echo Setting up data directories...
-python npnonlyf\setup_directories.py --force-root
+python npnonlyf\setup_directories.py
 if %errorlevel% neq 0 (
     echo WARNING: Directory setup script encountered issues. Falling back to basic directory creation.
     if not exist data\pdfs mkdir data\pdfs
     if not exist data\output mkdir data\output
     if not exist data\embeddings mkdir data\embeddings
+    
+    echo WARNING: Only root data directory will be used. npnonlyf\data will be ignored.
+) else (
+    echo Data directories set up successfully. Using root data directory.
 )
 
 echo Installing Node dependencies...

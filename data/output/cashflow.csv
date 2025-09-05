@@ -1,0 +1,6 @@
+company_id,year,currency,net_income,depreciation_amortization,working_capital_changes,cfo,capex,acquisitions,other_investing,cfi,debt_issued,debt_repaid,dividends_paid,share_buybacks,other_financing,cff,net_change_in_cash,ending_cash_balance
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2023,USD,7.3,,,,,,,,,,,,,,,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2024,USD,5495.0,23256.0,,63102.0,,,,,83.0,,,,,,,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2025,USD,8279.0,27270.0,,67915.0,,,,,-61.0,,,,,,,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2026,USD,34611.0,,,,,,,,,,,,,,,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2027,USD,38130.0,,,,,,,,,,,,,,,

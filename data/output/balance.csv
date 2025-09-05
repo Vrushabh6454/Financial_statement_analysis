@@ -1,0 +1,8 @@
+company_id,year,currency,cash_and_equivalents,accounts_receivable,inventory,other_current_assets,total_current_assets,ppe,intangible_assets,total_noncurrent_assets,total_assets,accounts_payable,short_term_debt,other_current_liabilities,total_current_liabilities,long_term_debt,total_noncurrent_liabilities,total_liabilities,share_capital,retained_earnings,other_equity,total_equity
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2024,USD,1214.0,2151.0,2842.0,900.0,511.0,11046.0,1127.0,,9407066.0,13367.0,,2169.0,849.0,2566.0,,63146.0,736.0,,31305.0,916.0
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2025,USD,1806.0,2627.0,3181.0,1079.0,470.0,11050.0,580.0,,10703700.0,-100.0,1293.0,1148.0,816.0,4825.0,,64154.0,767.0,,28045.0,845.0
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2026,USD,34349.0,2280.0,81.0,,,480.0,707.0,,72.0,13267.0,,-507.0,,-16885.0,,54.0,,,,45.0
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2027,USD,4233.0,255.0,2.0,,,1401.0,533.0,,421.0,,1293.0,-393.0,,7391.0,,2973.0,,,,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2029,USD,,2280.0,1793.0,,,1426.0,17461.0,,3005.0,13267.0,,,,,,4171.0,,,,17.0
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2028,USD,34349.0,13248.0,,,,,,,845.0,97368.0,,,,,,561.0,,,,
+b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2030,USD,,,,,,,,,52047.0,,,,,,,109473.0,,,,

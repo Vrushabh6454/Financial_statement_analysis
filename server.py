@@ -23,15 +23,22 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__, static_folder='client/dist')
 CORS(app)  # Enable CORS for all routes
 
-# Configure upload folder
-UPLOAD_FOLDER = 'data/pdfs'
-OUTPUT_FOLDER = 'data/output'
-EMBEDDINGS_FOLDER = 'data/embeddings'
+# Configure upload folder - using absolute paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+UPLOAD_FOLDER = os.path.join(BASE_DIR, 'data', 'pdfs')
+OUTPUT_FOLDER = os.path.join(BASE_DIR, 'data', 'output')
+EMBEDDINGS_FOLDER = os.path.join(BASE_DIR, 'data', 'embeddings')
 ALLOWED_EXTENSIONS = {'pdf'}
 
+# Ensure directories exist
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(OUTPUT_FOLDER, exist_ok=True)
 os.makedirs(EMBEDDINGS_FOLDER, exist_ok=True)
+
+logger.info(f"Using data directories:")
+logger.info(f"- Upload folder: {UPLOAD_FOLDER}")
+logger.info(f"- Output folder: {OUTPUT_FOLDER}")
+logger.info(f"- Embeddings folder: {EMBEDDINGS_FOLDER}")
 
 # Initialize embeddings manager
 embeddings_manager = None
