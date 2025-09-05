@@ -109,8 +109,37 @@ def run_pipeline(pdf_directory: str = 'data/pdfs',
         logger.info("STEP 2: DATA NORMALIZATION & STRUCTURING")
         logger.info("="*40)
         
-        company_id_map = {}
-        income_df, balance_df, cashflow_df = process_financial_data(financial_data, company_id_map)
+        # Validate financial data before processing
+        if not financial_data:
+            logger.warning("No financial data found in PDFs. Creating empty dataframes.")
+            income_df = pd.DataFrame(columns=['company_id', 'year', 'currency', 'revenue', 'cost_of_goods_sold', 
+                                             'gross_profit', 'operating_expenses', 'operating_income', 'interest_expense',
+                                             'pretax_income', 'income_tax', 'net_income', 'eps_basic', 'eps_diluted'])
+            balance_df = pd.DataFrame(columns=['company_id', 'year', 'currency'])
+            cashflow_df = pd.DataFrame(columns=['company_id', 'year', 'currency'])
+        else:
+            # Validate and log data quality
+            logger.info(f"Found {len(financial_data)} financial data entries to process")
+            valid_rows = [row for row in financial_data if isinstance(row, dict) and 'field' in row and 'value' in row]
+            invalid_rows = len(financial_data) - len(valid_rows)
+            
+            if invalid_rows > 0:
+                logger.warning(f"Filtered out {invalid_rows} invalid data rows")
+                
+            if len(valid_rows) == 0:
+                logger.error("No valid financial data found in PDFs. Creating empty dataframes.")
+                income_df = pd.DataFrame(columns=['company_id', 'year', 'currency'])
+                balance_df = pd.DataFrame(columns=['company_id', 'year', 'currency'])
+                cashflow_df = pd.DataFrame(columns=['company_id', 'year', 'currency'])
+            else:
+                company_id_map = {}
+                income_df, balance_df, cashflow_df = process_financial_data(valid_rows, company_id_map)
+                
+                # Validate resulting dataframes
+                logger.info(f"Processed data: Income Statement: {len(income_df)} rows, Balance Sheet: {len(balance_df)} rows, Cash Flow: {len(cashflow_df)} rows")
+                
+                if income_df.empty and balance_df.empty and cashflow_df.empty:
+                    logger.warning("Data processing resulted in empty dataframes. Check PDF content quality.")
         
         # Step 3: QA Checks
         logger.info("\n" + "="*40)

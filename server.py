@@ -237,8 +237,23 @@ def get_qa_findings(company_id):
 
 @app.route('/api/search', methods=['POST'])
 def search_notes():
-    if not embeddings_manager:
-        return jsonify({"error": "Embeddings system not initialized"}), 503
+    global embeddings_manager, embeddings_ready
+    
+    # Attempt to initialize embeddings if not ready yet
+    if not embeddings_ready and os.path.exists(EMBEDDINGS_FOLDER):
+        try:
+            embeddings_manager = FinancialEmbeddingsManager(index_path=EMBEDDINGS_FOLDER)
+            embeddings_manager.load_index_and_metadata()
+            embeddings_ready = True
+            logger.info("Embeddings system initialized successfully on-demand")
+        except Exception as e:
+            logger.error(f"Failed to initialize embeddings on-demand: {e}")
+    
+    if not embeddings_manager or not embeddings_ready:
+        return jsonify({
+            "error": "Embeddings system not initialized",
+            "details": "Please upload a PDF file first to initialize the embeddings system."
+        }), 503
     
     data = request.json
     if not data or 'query' not in data:
@@ -256,10 +271,19 @@ def search_notes():
             year_filter=year
         )
         
+        if not results:
+            return jsonify({
+                "results": [],
+                "message": "No matching documents found for your query."
+            }), 200
+            
         return jsonify({"results": results}), 200
     except Exception as e:
         logger.error(f"Error during semantic search: {e}")
-        return jsonify({"error": f"Error during search: {str(e)}"}), 500
+        return jsonify({
+            "error": "Error during search",
+            "details": f"An error occurred: {str(e)}. Please try a different query or check if embeddings are properly initialized."
+        }), 500
 
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')

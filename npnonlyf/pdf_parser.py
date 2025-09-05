@@ -14,6 +14,9 @@ import logging
 import uuid
 import pymupdf
 import warnings
+import gc
+import psutil
+import time
 
 # Suppress Tika warnings
 warnings.filterwarnings('ignore', category=UserWarning, message='Tika server is not running.*')
@@ -21,6 +24,42 @@ warnings.filterwarnings('ignore', category=UserWarning, message='Tika server is 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def memory_cleanup():
+    """Force garbage collection and report memory usage."""
+    try:
+        # Force garbage collection
+        gc.collect()
+        
+        # Get memory info
+        process = psutil.Process(os.getpid())
+        memory_info = process.memory_info()
+        memory_mb = memory_info.rss / (1024 * 1024)
+        
+        logger.info(f"Memory usage after cleanup: {memory_mb:.2f} MB")
+    except Exception as e:
+        logger.warning(f"Could not perform memory cleanup: {e}")
+        
+def batch_process(items, batch_size=5, sleep_time=1):
+    """Process items in batches to manage memory better.
+    
+    Args:
+        items: List of items to process
+        batch_size: Number of items per batch
+        sleep_time: Time to sleep between batches in seconds
+    
+    Yields:
+        Batches of items
+    """
+    for i in range(0, len(items), batch_size):
+        yield items[i:i+batch_size]
+        
+        # Cleanup memory between batches
+        memory_cleanup()
+        
+        # Sleep to allow system to stabilize
+        if i + batch_size < len(items):
+            time.sleep(sleep_time)
 
 # Comprehensive Financial Statement Regex Patterns
 COMPREHENSIVE_FINANCIAL_PATTERNS = {
@@ -185,9 +224,30 @@ class PDFParser:
         if self.parser_engine not in ['pymupdf', 'tesseract', 'tika']:
             raise ValueError(f"Invalid parser engine: {parser_engine}")
 
-    def extract_pdf_content(self, pdf_path: str) -> Dict[str, Any]:
-        """Main extraction method that routes to specific parsers."""
+    def extract_pdf_content(self, pdf_path: str, max_ocr_pages: int = 40) -> Dict[str, Any]:
+        """Main extraction method that routes to specific parsers.
+        
+        Args:
+            pdf_path: Path to the PDF file
+            max_ocr_pages: Maximum number of pages to process with OCR (only used for tesseract engine)
+        """
         logger.info(f"Processing PDF: {pdf_path} with engine: {self.parser_engine}")
+        
+        # Check file size to manage memory better
+        try:
+            file_size_mb = os.path.getsize(pdf_path) / (1024 * 1024)
+            logger.info(f"PDF file size: {file_size_mb:.2f} MB")
+            
+            # Warn about large files
+            if file_size_mb > 50:
+                logger.warning(f"Large PDF detected ({file_size_mb:.2f} MB). Processing may require significant memory.")
+                
+                # For very large files, reduce OCR page limit
+                if file_size_mb > 100 and max_ocr_pages > 20:
+                    max_ocr_pages = 20
+                    logger.info(f"Reducing OCR page limit to {max_ocr_pages} due to large file size")
+        except Exception as e:
+            logger.warning(f"Could not check file size: {e}")
         
         try:
             if self.parser_engine == 'pymupdf':
@@ -195,7 +255,7 @@ class PDFParser:
             elif self.parser_engine == 'tika':
                 return self._parse_with_tika(pdf_path)
             elif self.parser_engine == 'tesseract':
-                return self._parse_with_pytesseract_ocr(pdf_path)
+                return self._parse_with_pytesseract_ocr(pdf_path, max_ocr_pages)
         except Exception as e:
             logger.error(f"Error processing PDF {pdf_path}: {e}")
             return {'tables': [], 'text': '', 'company': 'Unknown', 'year': 0, 'pages': 0}
@@ -280,8 +340,13 @@ class PDFParser:
         
         return result
 
-    def _parse_with_pytesseract_ocr(self, pdf_path: str) -> Dict[str, Any]:
-        """Enhanced OCR parsing with Tesseract."""
+    def _parse_with_pytesseract_ocr(self, pdf_path: str, max_ocr_pages: int = 40) -> Dict[str, Any]:
+        """Enhanced OCR parsing with Tesseract.
+        
+        Args:
+            pdf_path: Path to the PDF file
+            max_ocr_pages: Maximum number of pages to process with OCR
+        """
         result = {
             'tables': [],
             'text': '',
@@ -291,10 +356,14 @@ class PDFParser:
         }
         
         try:
-            # Set Tesseract path for Windows
-            try:
-                pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-            except:
+            # Set Tesseract path for different OS environments
+            if os.name == 'nt':  # Windows
+                try:
+                    pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+                except:
+                    logger.warning("Could not set Tesseract path for Windows. Ensure Tesseract is in PATH.")
+            else:
+                # For Linux/Mac, we assume Tesseract is already in PATH
                 pass
             
             doc = pymupdf.open(pdf_path)
@@ -302,18 +371,54 @@ class PDFParser:
             
             ocr_text = []
             
-            # Process limited pages for performance
-            max_pages = min(20, doc.page_count)
-            logger.info(f"OCR processing first {max_pages} pages...")
+            # Detect financial pages to process
+            # Financial data is often in first half and some specific pages
+            page_count = doc.page_count
+            pages_to_process = []
             
-            for page_num in range(max_pages):
-                logger.info(f"OCR page {page_num + 1}/{max_pages}")
-                page = doc[page_num]
-                pix = page.get_pixmap(dpi=200)
-                img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            # Always process first pages, as they often contain important information
+            pages_to_process.extend(range(min(20, page_count)))
+            
+            # Add additional pages with potential financial data
+            if page_count > 20:
+                # Look for pages likely to contain financial statements
+                financial_keywords = ['balance sheet', 'income statement', 'cash flow', 'financial statements']
                 
-                text = pytesseract.image_to_string(img, config='--psm 6')
-                ocr_text.append(text)
+                # Only check a reasonable number of pages
+                page_check_limit = min(100, page_count)
+                
+                for page_num in range(20, page_check_limit):
+                    if page_num % 10 == 0:  # Log progress every 10 pages
+                        logger.info(f"Scanning for financial data: page {page_num}/{page_check_limit}")
+                    
+                    # Quick text extraction for keyword scanning
+                    page = doc[page_num]
+                    page_text = page.get_text(flags=0).lower()
+                    
+                    if any(keyword in page_text for keyword in financial_keywords):
+                        # Found a page with financial data, add it and surrounding pages
+                        for p in range(max(20, page_num - 2), min(page_num + 3, page_count)):
+                            if p not in pages_to_process:
+                                pages_to_process.append(p)
+            
+            # Limit pages to the max_ocr_pages parameter
+            pages_to_process = sorted(pages_to_process)[:max_ocr_pages]
+            
+            logger.info(f"OCR processing {len(pages_to_process)} pages out of {page_count} total pages...")
+            
+            # Process each selected page
+            for i, page_num in enumerate(pages_to_process):
+                logger.info(f"OCR page {page_num + 1}/{page_count} ({i + 1}/{len(pages_to_process)})")
+                page = doc[page_num]
+                
+                try:
+                    pix = page.get_pixmap(dpi=200)
+                    img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+                    
+                    text = pytesseract.image_to_string(img, config='--psm 6')
+                    ocr_text.append(f"--- PAGE {page_num + 1} ---\n{text}")
+                except Exception as e:
+                    logger.error(f"Error processing page {page_num}: {e}")
             
             result['text'] = '\n\n'.join(ocr_text)
             result['tables'] = self._extract_tables_from_text(
