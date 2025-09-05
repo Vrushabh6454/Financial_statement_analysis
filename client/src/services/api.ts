@@ -26,12 +26,12 @@ export const api = {
     const response = await fetch(`${API_URL}/companies`);
     
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ error: 'Failed to fetch companies' }));
       throw new Error(error.error || 'Failed to fetch companies');
     }
 
     const data = await response.json();
-    return data.companies;
+    return data.companies || [];
   },
 
   // Get available years for a company
@@ -39,12 +39,12 @@ export const api = {
     const response = await fetch(`${API_URL}/years/${companyId}`);
     
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ error: 'Failed to fetch years' }));
       throw new Error(error.error || 'Failed to fetch years');
     }
 
     const data = await response.json();
-    return data.years;
+    return data.years || [];
   },
 
   // Get financial data for a specific company and year
@@ -52,11 +52,29 @@ export const api = {
     const response = await fetch(`${API_URL}/financial-data/${companyId}/${year}`);
     
     if (!response.ok) {
-      const error = await response.json();
+      const error = await response.json().catch(() => ({ error: 'Failed to fetch financial data' }));
       throw new Error(error.error || 'Failed to fetch financial data');
     }
 
-    return response.json();
+    const data = await response.json();
+    
+    // Convert NaN values to null for better handling
+    const cleanData = (obj: any) => {
+      if (obj && typeof obj === 'object') {
+        const cleaned = { ...obj };
+        Object.keys(cleaned).forEach(key => {
+          if (typeof cleaned[key] === 'number' && isNaN(cleaned[key])) {
+            cleaned[key] = null;
+          } else if (cleaned[key] && typeof cleaned[key] === 'object') {
+            cleaned[key] = cleanData(cleaned[key]);
+          }
+        });
+        return cleaned;
+      }
+      return obj;
+    };
+
+    return cleanData(data);
   },
 
   // Get trends data for a company

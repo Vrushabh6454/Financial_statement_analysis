@@ -7,6 +7,7 @@ import logging
 from pipeline import run_pipeline
 from embeddings import FinancialEmbeddingsManager
 import pandas as pd
+import numpy as np
 import json
 
 # Configure logging
@@ -57,6 +58,17 @@ except Exception as e:
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+def clean_nan_values(data):
+    """Convert NaN values to None for JSON serialization"""
+    if isinstance(data, dict):
+        return {key: clean_nan_values(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        return [clean_nan_values(item) for item in data]
+    elif isinstance(data, float) and pd.isna(data):
+        return None
+    else:
+        return data
 
 @app.route('/api/upload', methods=['POST'])
 def upload_file():
@@ -180,12 +192,18 @@ def get_financial_data(company_id, year):
         cashflow_data = cashflow_df[(cashflow_df['company_id'] == company_id) & (cashflow_df['year'] == year)].to_dict('records')
         features_data = features_df[(features_df['company_id'] == company_id) & (features_df['year'] == year)].to_dict('records')
         
-        return jsonify({
+        # Clean the data to convert NaN to None
+        result = {
             "income": income_data[0] if income_data else {},
             "balance": balance_data[0] if balance_data else {},
             "cashflow": cashflow_data[0] if cashflow_data else {},
             "features": features_data[0] if features_data else {}
-        }), 200
+        }
+        
+        # Clean NaN values
+        cleaned_result = clean_nan_values(result)
+        
+        return jsonify(cleaned_result), 200
     except Exception as e:
         logger.error(f"Error retrieving financial data: {e}")
         return jsonify({"error": f"Error retrieving financial data: {str(e)}"}), 500
@@ -211,11 +229,17 @@ def get_trends(company_id):
         balance_data = balance_df[balance_df['company_id'] == company_id].sort_values('year').to_dict('records')
         features_data = features_df[features_df['company_id'] == company_id].sort_values('year').to_dict('records')
         
-        return jsonify({
+        # Clean the data to convert NaN to None
+        result = {
             "income_trends": income_data,
             "balance_trends": balance_data,
             "ratio_trends": features_data
-        }), 200
+        }
+        
+        # Clean NaN values
+        cleaned_result = clean_nan_values(result)
+        
+        return jsonify(cleaned_result), 200
     except Exception as e:
         logger.error(f"Error retrieving trends: {e}")
         return jsonify({"error": f"Error retrieving trends: {str(e)}"}), 500

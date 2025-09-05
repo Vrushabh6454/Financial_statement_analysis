@@ -35,16 +35,19 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   useEffect(() => {
     const checkForData = async () => {
       try {
+        console.log('Checking for initial data...');
         const companies = await api.getCompanies();
+        console.log('Found companies:', companies);
         if (companies.length > 0) {
           setState(prev => ({
             ...prev,
             isDataLoaded: true,
             companies
           }));
+          console.log('Data loaded successfully');
         }
       } catch (error) {
-        console.log('No data available yet');
+        console.log('No data available yet:', error);
       }
     };
 
@@ -74,6 +77,7 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
 
   // Select company
   const selectCompany = async (company: Company) => {
+    console.log('Selecting company:', company);
     setState(prev => ({ 
       ...prev, 
       isLoading: true, 
@@ -87,10 +91,14 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
     }));
 
     try {
+      console.log('Fetching years and trends for company:', company.id);
       const [years, trendsData] = await Promise.all([
         api.getYears(company.id),
         api.getTrends(company.id)
       ]);
+
+      console.log('Received years:', years);
+      console.log('Received trends:', trendsData);
 
       setState(prev => ({
         ...prev,
@@ -102,13 +110,47 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
       // If years available, select the most recent by default
       if (years.length > 0) {
         const mostRecentYear = Math.max(...years);
-        selectYear(mostRecentYear);
+        console.log('Auto-selecting most recent year:', mostRecentYear);
+        
+        // Load financial data for the most recent year
+        setState(prev => ({ 
+          ...prev, 
+          isLoading: true,
+          selectedYear: mostRecentYear
+        }));
+
+        try {
+          console.log('Fetching financial data for:', company.id, mostRecentYear);
+          const [financialData, qaFindings] = await Promise.all([
+            api.getFinancialData(company.id, mostRecentYear),
+            api.getQAFindings(company.id, mostRecentYear)
+          ]);
+
+          console.log('Received financial data:', financialData);
+          console.log('Received QA findings:', qaFindings);
+
+          setState(prev => ({
+            ...prev,
+            financialData,
+            qaFindings,
+            isLoading: false
+          }));
+        } catch (yearError) {
+          console.error('Failed to load year data', yearError);
+          const errorMessage = yearError instanceof Error ? yearError.message : 'Failed to load year data';
+          setState(prev => ({
+            ...prev,
+            error: errorMessage,
+            isLoading: false
+          }));
+        }
       }
     } catch (error) {
       console.error('Failed to load company data', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load company data';
       setState(prev => ({
         ...prev,
-        error: 'Failed to load company data',
+        error: errorMessage,
         isLoading: false
       }));
     }
