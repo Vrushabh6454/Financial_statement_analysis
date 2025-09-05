@@ -35,11 +35,18 @@ os.makedirs(EMBEDDINGS_FOLDER, exist_ok=True)
 
 # Initialize embeddings manager
 embeddings_manager = None
+embeddings_ready = False
 try:
-    embeddings_manager = FinancialEmbeddingsManager(index_path=EMBEDDINGS_FOLDER)
-    embeddings_manager.load_index_and_metadata()
+    if os.path.exists(EMBEDDINGS_FOLDER):
+        embeddings_manager = FinancialEmbeddingsManager(index_path=EMBEDDINGS_FOLDER)
+        embeddings_manager.load_index_and_metadata()
+        embeddings_ready = True
+        logger.info("Embeddings system initialized successfully")
+    else:
+        logger.info("Embeddings folder does not exist yet - will be initialized when first PDF is processed")
 except Exception as e:
     logger.error(f"Failed to initialize embeddings: {e}")
+    logger.info("Search functionality will be limited until embeddings are properly initialized")
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS

@@ -1,33 +1,31 @@
-pandas
-numpy
-pdfplumber
-pytesseract
-tika
-sentence-transformers
-faiss-cpu
-streamlit
-plotly
-matplotlib
-scikit-learn
-openpyxl
-Pillow
-regex
-streamlit
-pandas
-numpy
-plotly
-crewai
-langchain_community
-ollama
-pydantic
-pdfplumber
-tika
-pytesseract
-faiss-cpu
-sentence-transformers
-torch
-transformers
-argparse
-pytesseract
-fitz
-pymupdf
+# Data processing
+pandas==2.0.0
+numpy==1.24.0
+scikit-learn==1.3.0
+
+# PDF processing
+pdfplumber==0.10.0
+pytesseract==0.3.10
+tika==2.6.0
+pymupdf==1.22.0
+fitz==0.0.1.dev2  # PyMuPDF companion
+
+# AI and NLP
+sentence-transformers==2.2.2
+faiss-cpu==1.7.4
+torch==2.0.0
+transformers==4.30.0
+langchain_community==0.0.10
+crewai==0.28.0
+pydantic==1.10.8
+ollama==0.1.0
+
+# Visualization and UI
+streamlit==1.24.0
+plotly==5.15.0
+matplotlib==3.7.1
+
+# Utils
+openpyxl==3.1.2
+Pillow==10.0.0
+regex==2023.6.3
