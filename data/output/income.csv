@@ -1,3 +1,2 @@
 company_id,year,currency,revenue,cost_of_goods_sold,gross_profit,operating_expenses,operating_income,interest_expense,pretax_income,income_tax,net_income,eps_basic,eps_diluted
-9b5dbe9e-49d0-4a4d-ac1b-c2884b1c780a,2024,USD,179500000.0,,70000000.0,31000000.0,,,,28.0,4099999.9999999995,,
-769aa081-a3e9-4786-8d87-355cbd92cee5,2023,USD,100.0,,,,8.3,2.3,6.4,-0.9,7.3,,
+64f47bc2-72fb-4ade-9f86-f6da144ba604,2023,USD,100.0,,,,8.3,2.3,6.4,-0.9,7.3,,

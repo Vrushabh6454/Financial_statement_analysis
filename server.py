@@ -45,13 +45,17 @@ logger.info(f"- Embeddings folder: {EMBEDDINGS_FOLDER}")
 embeddings_manager = None
 embeddings_ready = False
 try:
-    if os.path.exists(EMBEDDINGS_FOLDER):
+    # Check if embeddings files exist
+    index_file = os.path.join(EMBEDDINGS_FOLDER, 'notes.index')
+    metadata_file = os.path.join(EMBEDDINGS_FOLDER, 'notes_meta.json')
+    
+    if os.path.exists(index_file) and os.path.exists(metadata_file):
         embeddings_manager = FinancialEmbeddingsManager(index_path=EMBEDDINGS_FOLDER)
         embeddings_manager.load_index_and_metadata()
         embeddings_ready = True
         logger.info("Embeddings system initialized successfully")
     else:
-        logger.info("Embeddings folder does not exist yet - will be initialized when first PDF is processed")
+        logger.info("No embeddings found - will be initialized when first PDF is processed")
 except Exception as e:
     logger.error(f"Failed to initialize embeddings: {e}")
     logger.info("Search functionality will be limited until embeddings are properly initialized")
@@ -93,7 +97,7 @@ def upload_file():
                 pdf_directory=UPLOAD_FOLDER,
                 output_directory=OUTPUT_FOLDER,
                 embeddings_directory=EMBEDDINGS_FOLDER,
-                enable_ocr=True
+                parser_engine='pymupdf'
             )
             
             if success:
@@ -101,22 +105,33 @@ def upload_file():
                 income_path = os.path.join(OUTPUT_FOLDER, 'income.csv')
                 balance_path = os.path.join(OUTPUT_FOLDER, 'balance.csv')
                 cashflow_path = os.path.join(OUTPUT_FOLDER, 'cashflow.csv')
+                company_map_path = os.path.join(OUTPUT_FOLDER, 'company_map.json')
                 
                 income_exists = os.path.exists(income_path)
                 balance_exists = os.path.exists(balance_path)
                 cashflow_exists = os.path.exists(cashflow_path)
+                company_map_exists = os.path.exists(company_map_path)
                 
-                if not income_exists or not balance_exists or not cashflow_exists:
-                    logger.warning(f"PDF processed but no financial data found. Files created: income={income_exists}, balance={balance_exists}, cashflow={cashflow_exists}")
+                # Check if we have at least some financial data AND a company map
+                has_some_financial_data = income_exists or balance_exists or cashflow_exists
+                
+                if not has_some_financial_data or not company_map_exists:
+                    logger.warning(f"PDF processed but no financial data found. Files created: income={income_exists}, balance={balance_exists}, cashflow={cashflow_exists}, company_map={company_map_exists}")
                     return jsonify({
                         "warning": "The PDF was processed, but no financial statement data was detected. Please upload a financial report PDF.",
                         "filename": filename
                     }), 202  # 202 Accepted but incomplete
                 
                 # Reload embeddings after pipeline run
-                global embeddings_manager
-                embeddings_manager = FinancialEmbeddingsManager(index_path=EMBEDDINGS_FOLDER)
-                embeddings_manager.load_index_and_metadata()
+                global embeddings_manager, embeddings_ready
+                try:
+                    embeddings_manager = FinancialEmbeddingsManager(index_path=EMBEDDINGS_FOLDER)
+                    embeddings_manager.load_index_and_metadata()
+                    embeddings_ready = True
+                    logger.info("Embeddings reloaded successfully after upload")
+                except Exception as e:
+                    logger.warning(f"Failed to reload embeddings after upload: {e}")
+                    embeddings_ready = False
                 
                 return jsonify({
                     "message": "File processed successfully",
@@ -137,14 +152,14 @@ def get_companies():
         # Load company map
         company_map_file = os.path.join(OUTPUT_FOLDER, 'company_map.json')
         if not os.path.exists(company_map_file):
-            return jsonify({"error": "No companies data available"}), 404
+            return jsonify({"companies": []}), 200
             
         with open(company_map_file, 'r') as f:
             company_map = json.load(f)
         
         # Check if the company map is empty (no financial data was found)
         if not company_map:
-            return jsonify({"error": "No financial data was found in the uploaded PDF. Please upload a financial statement PDF."}), 404
+            return jsonify({"companies": []}), 200
             
         return jsonify({
             "companies": [{"id": k, "name": v} for k, v in company_map.items()]
@@ -177,20 +192,22 @@ def get_financial_data(company_id, year):
         cashflow_path = os.path.join(OUTPUT_FOLDER, 'cashflow.csv')
         features_path = os.path.join(OUTPUT_FOLDER, 'features.csv')
         
-        if not all(os.path.exists(p) for p in [income_path, balance_path, cashflow_path, features_path]):
-            return jsonify({"error": "Financial data not available"}), 404
+        # Check if at least some data exists
+        existing_files = [p for p in [income_path, balance_path, cashflow_path, features_path] if os.path.exists(p)]
+        if not existing_files:
+            return jsonify({"error": "No financial data available"}), 404
         
-        # Read dataframes
-        income_df = pd.read_csv(income_path)
-        balance_df = pd.read_csv(balance_path)
-        cashflow_df = pd.read_csv(cashflow_path)
-        features_df = pd.read_csv(features_path)
+        # Read dataframes for existing files only
+        income_df = pd.read_csv(income_path) if os.path.exists(income_path) else pd.DataFrame()
+        balance_df = pd.read_csv(balance_path) if os.path.exists(balance_path) else pd.DataFrame()
+        cashflow_df = pd.read_csv(cashflow_path) if os.path.exists(cashflow_path) else pd.DataFrame()
+        features_df = pd.read_csv(features_path) if os.path.exists(features_path) else pd.DataFrame()
         
-        # Filter by company and year
-        income_data = income_df[(income_df['company_id'] == company_id) & (income_df['year'] == year)].to_dict('records')
-        balance_data = balance_df[(balance_df['company_id'] == company_id) & (balance_df['year'] == year)].to_dict('records')
-        cashflow_data = cashflow_df[(cashflow_df['company_id'] == company_id) & (cashflow_df['year'] == year)].to_dict('records')
-        features_data = features_df[(features_df['company_id'] == company_id) & (features_df['year'] == year)].to_dict('records')
+        # Filter by company and year (only for non-empty dataframes)
+        income_data = income_df[(income_df['company_id'] == company_id) & (income_df['year'] == year)].to_dict('records') if not income_df.empty else []
+        balance_data = balance_df[(balance_df['company_id'] == company_id) & (balance_df['year'] == year)].to_dict('records') if not balance_df.empty else []
+        cashflow_data = cashflow_df[(cashflow_df['company_id'] == company_id) & (cashflow_df['year'] == year)].to_dict('records') if not cashflow_df.empty else []
+        features_data = features_df[(features_df['company_id'] == company_id) & (features_df['year'] == year)].to_dict('records') if not features_df.empty else []
         
         # Clean the data to convert NaN to None
         result = {
@@ -216,18 +233,20 @@ def get_trends(company_id):
         balance_path = os.path.join(OUTPUT_FOLDER, 'balance.csv')
         features_path = os.path.join(OUTPUT_FOLDER, 'features.csv')
         
-        if not all(os.path.exists(p) for p in [income_path, balance_path, features_path]):
+        # Check if at least some data exists
+        existing_files = [p for p in [income_path, balance_path, features_path] if os.path.exists(p)]
+        if not existing_files:
             return jsonify({"error": "Trends data not available"}), 404
         
-        # Read dataframes
-        income_df = pd.read_csv(income_path)
-        balance_df = pd.read_csv(balance_path)
-        features_df = pd.read_csv(features_path)
+        # Read dataframes for existing files only
+        income_df = pd.read_csv(income_path) if os.path.exists(income_path) else pd.DataFrame()
+        balance_df = pd.read_csv(balance_path) if os.path.exists(balance_path) else pd.DataFrame()
+        features_df = pd.read_csv(features_path) if os.path.exists(features_path) else pd.DataFrame()
         
-        # Filter by company
-        income_data = income_df[income_df['company_id'] == company_id].sort_values('year').to_dict('records')
-        balance_data = balance_df[balance_df['company_id'] == company_id].sort_values('year').to_dict('records')
-        features_data = features_df[features_df['company_id'] == company_id].sort_values('year').to_dict('records')
+        # Filter by company (only for non-empty dataframes)
+        income_data = income_df[income_df['company_id'] == company_id].sort_values('year').to_dict('records') if not income_df.empty else []
+        balance_data = balance_df[balance_df['company_id'] == company_id].sort_values('year').to_dict('records') if not balance_df.empty else []
+        features_data = features_df[features_df['company_id'] == company_id].sort_values('year').to_dict('records') if not features_df.empty else []
         
         # Clean the data to convert NaN to None
         result = {
@@ -251,7 +270,7 @@ def get_qa_findings(company_id):
         
         qa_path = os.path.join(OUTPUT_FOLDER, 'qa_findings.csv')
         if not os.path.exists(qa_path):
-            return jsonify({"error": "QA findings not available"}), 404
+            return jsonify({"findings": []}), 200
         
         qa_df = pd.read_csv(qa_path)
         

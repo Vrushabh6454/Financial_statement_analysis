@@ -1,6 +1,0 @@
-company_id,year,rule_id,rule_name,status,severity,details,timestamp
-b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2024,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-04 11:38:39.246267
-b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2025,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-04 11:38:39.256320
-b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2026,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-04 11:38:39.264402
-b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2027,BS002,Increasing Debt vs Revenue Growth,FAIL,Medium,Increasing debt without corresponding revenue growth.,2025-09-04 11:38:39.275983
-b6ffb9ab-f276-4023-87d3-a24300e7a2b2,2029,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-04 11:38:39.283993
