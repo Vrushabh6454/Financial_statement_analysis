@@ -4,8 +4,8 @@ import os
 import uuid
 from werkzeug.utils import secure_filename
 import logging
-from npnonlyf.pipeline import run_pipeline
-from npnonlyf.embeddings import FinancialEmbeddingsManager
+from pipeline import run_pipeline
+from embeddings import FinancialEmbeddingsManager
 import pandas as pd
 import json
 

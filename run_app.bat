@@ -70,17 +70,10 @@ echo Activating virtual environment...
 call venv\Scripts\activate.bat
 
 echo Setting up data directories...
-python npnonlyf\setup_directories.py
-if %errorlevel% neq 0 (
-    echo WARNING: Directory setup script encountered issues. Falling back to basic directory creation.
-    if not exist data\pdfs mkdir data\pdfs
-    if not exist data\output mkdir data\output
-    if not exist data\embeddings mkdir data\embeddings
-    
-    echo WARNING: Only root data directory will be used. npnonlyf\data will be ignored.
-) else (
-    echo Data directories set up successfully. Using root data directory.
-)
+if not exist data\pdfs mkdir data\pdfs
+if not exist data\output mkdir data\output
+if not exist data\embeddings mkdir data\embeddings
+echo Data directories set up successfully.
 
 echo Installing Node dependencies...
 cd client
