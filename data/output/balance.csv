@@ -1,0 +1,4 @@
+company_id,year,accounts_payable,accounts_receivable,cash_and_equivalents,intangible_assets,inventory,long_term_debt,other_current_assets,other_current_liabilities,other_equity,ppe,retained_earnings,share_capital,short_term_debt,total_assets,total_current_assets,total_current_liabilities,total_equity,total_liabilities,total_noncurrent_assets,total_noncurrent_liabilities
+3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2022,202.0,208.0,80.0,6.0,2.0,202.0,81000000.0,30.0,-250.35,202.0,453.0,6.0,369.0,80.0,1000000.0,22.0,212.0,80.0,,22.0
+3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2023,7.0,131.0,201.0,2.0,79000000.0,24000000000.0,197000000.0,33.0,438.45,202.0,24.0,23000000000.0,110000000.0,4000000000.0,24000000000.0,26.0,421.0,10.0,36.0,26.0
+3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2024,16.0,63.0,203000000000.0,6.0,15.0,660000000.0,20.0,32.0,113.0,6.2,900.0,4.6,527000000.0,80.0,3.0,26.0,477.0,201.0,,26.0

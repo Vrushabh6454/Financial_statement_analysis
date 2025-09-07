@@ -1,0 +1,4 @@
+company_id,year,acquisitions,capex,cfo,debt_issued,depreciation_amortization,dividends_paid,net_change_in_cash,net_income,working_capital_changes
+3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2022,100.0,202.0,0.0,1520000000.0,80.0,130.2,31.0,202.0,1100000000.0
+3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2023,100.0,11.0,202.0,1520000000.0,101.0,9.6,,24.0,2300000000.0
+3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2024,100.0,11.21,6.0,1660000000.0,119.0,400000000.0,312.0,25.0,815.0

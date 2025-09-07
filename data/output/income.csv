@@ -1,0 +1,4 @@
+company_id,year,cost_of_goods_sold,eps_basic,eps_diluted,income_tax,interest_expense,net_income,operating_expenses,operating_income,pretax_income,revenue
+3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2022,4.0,332.0,272.0,-147.0,9.2,202.0,500000000.0,80.0,1.5,13.0
+3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2023,31.0,81.95,81.88,-51.26,13.6,318000000000.0,11.0,627.0,289.0,13000000000.0
+3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2024,31.0,65.01,64.97,190.0,12.6,25000000000.0,5.0,576.0,343.0,13000000000.0
