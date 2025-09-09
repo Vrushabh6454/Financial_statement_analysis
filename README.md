@@ -59,23 +59,12 @@ pip install -r requirements.txt
 mkdir -p data/pdfs data/output data/embeddings
 ```
 
-4. **Add PDF files**
+4. **Add PDF files(optional)**
    - Place your financial statement PDFs in the `data/pdfs/` directory
    - Support formats: Annual reports, 10-K filings, financial statements
    - Naming convention: `CompanyName_Year.pdf` (e.g., `JPMorgan_2023.pdf`)
 
 ## 🚀 Usage
-
-### Step 1: Run the Processing Pipeline
-
-```bash
-# Basic usage
-python pipeline.py
-
-# Advanced usage with options
-python pipeline.py --pdf-dir data/pdfs --output-dir data/output --log-level INFO
-```
-
 **Pipeline Options:**
 - `--pdf-dir`: Directory containing PDF files (default: data/pdfs)
 - `--output-dir`: Output directory for CSV files (default: data/output)
@@ -83,7 +72,7 @@ python pipeline.py --pdf-dir data/pdfs --output-dir data/output --log-level INFO
 - `--no-ocr`: Disable OCR for scanned PDFs
 - `--log-level`: Logging level (DEBUG, INFO, WARNING, ERROR)
 
-### Step 2: Launch the Dashboard
+### Step 1: Launch the Dashboard
 
 ```bash
 streamlit run dashboard.py
