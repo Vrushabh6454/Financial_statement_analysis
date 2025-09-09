@@ -136,6 +136,6 @@ cython_debug/
 *.log
 
 # PDF and data outputs
-npnonlyf/data/output/
-npnonlyf/data/embeddings/
-npnonlyf/data/pdfs/
+data/output/
+data/embeddings/
+data/pdfs/

@@ -1,4 +1,4 @@
-# mlmodel.py - Fixed version
+# mlmodel.py - Fixed version with EXACT training order
 """
 ML Models for Financial Analysis Predictions
 Handles loading of pre-trained models and making predictions using financial features
@@ -48,9 +48,9 @@ class FinancialMLPredictor:
                 'color': '#FF6B6B',
                 'output_label': 'Fraud Risk',
                 'output_format': 'risk_level',
-                'model_filename': 'fraud_risk_model.pkl',  # Exact filename
+                'model_filename': 'fraud_risk_model.pkl',
                 'required_features': [
-                    'gross_margin', 'operating_margin', 'net_margin', 'roa', 'roe', 
+                    'gross_margin', 'operating_margin', 'net_margin', 'roa', 'roe',
                     'current_ratio', 'quick_ratio', 'debt_to_equity', 'interest_coverage',
                     'accrual_ratio', 'cfo_net_income_ratio', 'accounts_receivable_growth',
                     'revenue_growth', 'inventory_growth'
@@ -64,20 +64,23 @@ class FinancialMLPredictor:
                 'color': '#36A2EB',
                 'output_label': 'Liquidity Risk',
                 'output_format': 'risk_level',
-                'model_filename': 'liquidity_risk_model.pkl',  # Exact filename
+                'model_filename': 'liquidity_risk_model.pkl',
+                # ✅ FIXED: Exact order from your training data
                 'required_features': [
-                    'quick_ratio',        # Most important (58.9%)
-                    'current_ratio',      # Second most (24.2%)
-                    'debt_to_equity',     # Third (3.2%)
-                    'net_margin',         # Fourth (1.7%)
-                    'interest_coverage',  # Fifth (1.7%)
-                    'gross_margin',       # Sixth (1.7%)
-                    'inventory_growth',   # Seventh (1.5%)
-                    'operating_margin',   # Eighth (1.5%)
-                    'cfo_net_income_ratio', # Ninth (0.9%)
-                    'revenue_growth',     # Tenth (0.9%)
-                    'accrual_ratio',      # Eleventh (0.8%)
-                    'roa'                 # Twelfth (0.8%)
+                    'gross_margin',                    # 1
+                    'operating_margin',               # 2
+                    'net_margin',                     # 3
+                    'roa',                           # 4
+                    'roe',                           # 5
+                    'current_ratio',                 # 6
+                    'quick_ratio',                   # 7
+                    'debt_to_equity',                # 8
+                    'interest_coverage',             # 9
+                    'accrual_ratio',                 # 10
+                    'cfo_net_income_ratio',          # 11
+                    'accounts_receivable_growth',    # 12
+                    'revenue_growth',                # 13
+                    'inventory_growth'               # 14
                 ]
             },
             'EWS_model': {
@@ -88,7 +91,7 @@ class FinancialMLPredictor:
                 'color': '#FF9F40',
                 'output_label': 'Warning Level',
                 'output_format': 'warning_level',
-                'model_filename': 'EWS.pkl',  # Fixed: EWS.pkl instead of EWS_model.pkl
+                'model_filename': 'EWS.pkl',
                 'required_features': [
                     'current_ratio', 'debt_to_equity', 'roa', 'roe', 'operating_margin',
                     'net_margin', 'gross_margin', 'interest_coverage', 'cfo_to_net_income',
@@ -142,6 +145,16 @@ class FinancialMLPredictor:
             available.append(config)
         return available
     
+    def _safe_get(self, data_dict: Dict, key: str, default: float = 0.0) -> float:
+        """Safely get value from nested financial data"""
+        # Check all data sources
+        for source in ['features', 'income', 'balance', 'cashflow']:
+            if source in data_dict and key in data_dict[source]:
+                value = data_dict[source][key]
+                if pd.notna(value) and value is not None:
+                    return float(value)
+        return default
+    
     def _calculate_derived_features(self, financial_data: Dict) -> Dict:
         """Calculate derived features that models might need"""
         derived = {}
@@ -163,58 +176,55 @@ class FinancialMLPredictor:
         interest_expense = self._safe_get(financial_data, 'interest_expense')
         pretax_income = self._safe_get(financial_data, 'pretax_income')
         
-        # Calculate key derived features
-        if revenue and revenue != 0:
-            derived['gross_margin'] = gross_profit / revenue if gross_profit else 0.0
-            derived['operating_margin'] = operating_income / revenue if operating_income else 0.0
-            derived['net_margin'] = net_income / revenue if net_income else 0.0
-        
-        if total_assets and total_assets != 0:
-            derived['roa'] = net_income / total_assets if net_income else 0.0
-        
-        if total_equity and total_equity != 0:
-            derived['roe'] = net_income / total_equity if net_income else 0.0
-        
-        if current_liabilities and current_liabilities != 0:
-            derived['current_ratio'] = current_assets / current_liabilities if current_assets else 0.0
-            derived['quick_ratio'] = (current_assets - inventory) / current_liabilities if (current_assets and inventory) else 0.0
-            derived['cash_ratio'] = cash / current_liabilities if cash else 0.0
-        
-        if total_equity and total_equity != 0:
-            derived['debt_to_equity'] = total_liabilities / total_equity if total_liabilities else 0.0
-        
-        if interest_expense and interest_expense != 0:
-            derived['interest_coverage'] = (pretax_income + interest_expense) / interest_expense if pretax_income else 0.0
-        
-        # Set defaults for missing complex features
+        # ✅ CRITICAL: Calculate ALL required features in the EXACT training order
         derived.update({
-            'accrual_ratio': 0.0,
-            'cfo_net_income_ratio': cfo / net_income if (cfo and net_income and net_income != 0) else 0.0,
-            'cfo_to_net_income': cfo / net_income if (cfo and net_income and net_income != 0) else 0.0,
+            # Margins (positions 1-3)
+            'gross_margin': gross_profit / revenue if revenue else 0.0,
+            'operating_margin': operating_income / revenue if revenue else 0.0,
+            'net_margin': net_income / revenue if revenue else 0.0,
+            
+            # Profitability ratios (positions 4-5)
+            'roa': net_income / total_assets if total_assets else 0.0,
+            'roe': net_income / total_equity if total_equity else 0.0,
+            
+            # Liquidity ratios (positions 6-7)
+            'current_ratio': current_assets / current_liabilities if current_liabilities else 1.0,
+            'quick_ratio': (current_assets - inventory) / current_liabilities if current_liabilities else 1.0,
+            
+            # Leverage ratios (positions 8-9)
+            'debt_to_equity': total_liabilities / total_equity if total_equity else 0.0,
+            'interest_coverage': (pretax_income + interest_expense) / interest_expense if interest_expense else 1.0,
+            
+            # Complex ratios (positions 10-11)
+            'accrual_ratio': 0.0,  # Default complex calculation
+            'cfo_net_income_ratio': cfo / net_income if net_income else 0.0,
+            
+            # Growth rates (positions 12-14) - defaulted since no historical data
             'accounts_receivable_growth': 0.0,
             'revenue_growth': 0.0,
             'inventory_growth': 0.0,
-            'asset_turnover': revenue / total_assets if (revenue and total_assets and total_assets != 0) else 0.0,
+            
+            # Additional features for other models
+            'cfo_to_net_income': cfo / net_income if net_income else 0.0,
+            'asset_turnover': revenue / total_assets if total_assets else 0.0,
             'inventory_turnover': 0.0,
             'receivables_days': 0.0,
-            'working_capital_ratio': 0.0,
+            'working_capital_ratio': (current_assets - current_liabilities) / total_assets if total_assets else 0.0,
             'debt_service_coverage': 0.0,
-            'times_interest_earned': 0.0,
+            'times_interest_earned': (pretax_income + interest_expense) / interest_expense if interest_expense else 0.0,
             'price_to_book': 0.0,
-            'capex': 0.0
+            'capex': 0.0,
+            'cash_ratio': cash / current_liabilities if current_liabilities else 0.0,
+            
+            # Raw values for models that need them
+            'revenue': revenue,
+            'net_income': net_income,
+            'total_assets': total_assets,
+            'total_liabilities': total_liabilities,
+            'cfo': cfo
         })
         
         return derived
-    
-    def _safe_get(self, data_dict: Dict, key: str, default: float = 0.0) -> float:
-        """Safely get value from nested financial data"""
-        # Check all data sources
-        for source in ['features', 'income', 'balance', 'cashflow']:
-            if source in data_dict and key in data_dict[source]:
-                value = data_dict[source][key]
-                if pd.notna(value) and value is not None:
-                    return float(value)
-        return default
     
     def prepare_features(self, financial_data: Dict, model_key: str) -> Tuple[pd.DataFrame, List[str]]:
         """Prepare features for a specific model from financial data"""
@@ -237,14 +247,23 @@ class FinancialMLPredictor:
         features_dict = {}
         missing_features = []
         
+        # ✅ CRITICAL: Build features in EXACT training order
         for feature in required_features:
-            if feature in all_data and pd.notna(all_data[feature]):
+            if feature in all_data and pd.notna(all_data[feature]) and all_data[feature] is not None:
                 features_dict[feature] = float(all_data[feature])
             else:
-                # Set reasonable defaults for missing features
-                if 'ratio' in feature.lower() or 'rate' in feature.lower():
+                # Set appropriate defaults based on feature type
+                if feature == 'roe':
                     features_dict[feature] = 0.0
+                elif feature == 'accounts_receivable_growth':
+                    features_dict[feature] = 0.0
+                elif 'ratio' in feature.lower() or 'coverage' in feature.lower():
+                    features_dict[feature] = 1.0  # Better default for ratios
                 elif 'growth' in feature.lower():
+                    features_dict[feature] = 0.0
+                elif 'margin' in feature.lower():
+                    features_dict[feature] = 0.0
+                elif feature in ['roa', 'roe']:
                     features_dict[feature] = 0.0
                 elif 'flag' in feature.lower():
                     features_dict[feature] = 0
@@ -252,10 +271,20 @@ class FinancialMLPredictor:
                     features_dict[feature] = 0.0
                 missing_features.append(feature)
         
-        # Create DataFrame with correct feature order
+        # ✅ CRITICAL: Create DataFrame maintaining EXACT training order
         features_df = pd.DataFrame([features_dict])
-        # Ensure columns are in the same order as required_features
-        features_df = features_df.reindex(columns=required_features)
+        
+        # ✅ CRITICAL: Reindex to ensure exact column order matches training
+        features_df = features_df.reindex(columns=required_features, fill_value=0.0)
+        
+        # ✅ CRITICAL: Final verification
+        for feature in required_features:
+            if feature not in features_df.columns:
+                features_df[feature] = 0.0
+                logger.warning(f"Added missing feature {feature} with default value 0.0")
+        
+        # Log the final feature order for debugging
+        logger.info(f"Final feature order for {model_key}: {list(features_df.columns)}")
         
         return features_df, missing_features
     
@@ -346,6 +375,7 @@ class FinancialMLPredictor:
             if isinstance(prediction, (int, float, np.number)):
                 return f"{prediction:.2f}"
             return str(prediction)
+
 
 # Global functions for easy import
 _predictor_instance = None
