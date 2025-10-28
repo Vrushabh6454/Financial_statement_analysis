@@ -1,10 +1,8 @@
 company_id,year,rule_id,rule_name,status,severity,details,timestamp
-3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2022,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-05 21:26:01.933647
-3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2022,CF002,Operating Cash Flow vs Net Income,FAIL,Medium,"Operating cash flow is significantly lower than net income, suggesting lower quality of earnings.",2025-09-05 21:26:01.938769
-3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2023,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-05 21:26:01.940769
-3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2023,IS001,Net Income vs Retained Earnings,FAIL,Medium,Net income may not tie to retained earnings change (could be due to dividends).,2025-09-05 21:26:01.941815
-3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2023,CF002,Operating Cash Flow vs Net Income,FAIL,Medium,"Operating cash flow is significantly lower than net income, suggesting lower quality of earnings.",2025-09-05 21:26:01.942771
-3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2024,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-05 21:26:01.943876
-3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2024,IS001,Net Income vs Retained Earnings,FAIL,Medium,Net income may not tie to retained earnings change (could be due to dividends).,2025-09-05 21:26:01.945784
-3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2024,CF001,Cash Flow Reconciliation,FAIL,Medium,Cash flow statement may not reconcile with balance sheet.,2025-09-05 21:26:01.945784
-3cb40753-7ec9-4547-9dc6-e041e8cd22aa,2024,CF002,Operating Cash Flow vs Net Income,FAIL,Medium,"Operating cash flow is significantly lower than net income, suggesting lower quality of earnings.",2025-09-05 21:26:01.946770
+54ca0f37-14b3-4dd4-916e-bb79fd09d23c,2022,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-08 11:22:31.166141
+54ca0f37-14b3-4dd4-916e-bb79fd09d23c,2022,CF002,Operating Cash Flow vs Net Income,FAIL,Medium,"Operating cash flow is significantly lower than net income, suggesting lower quality of earnings.",2025-09-08 11:22:31.172023
+54ca0f37-14b3-4dd4-916e-bb79fd09d23c,2023,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-08 11:22:31.173128
+54ca0f37-14b3-4dd4-916e-bb79fd09d23c,2023,IS001,Net Income vs Retained Earnings,FAIL,Medium,Net income may not tie to retained earnings change (could be due to dividends).,2025-09-08 11:22:31.174069
+54ca0f37-14b3-4dd4-916e-bb79fd09d23c,2023,CF002,Operating Cash Flow vs Net Income,FAIL,Medium,"Operating cash flow is significantly lower than net income, suggesting lower quality of earnings.",2025-09-08 11:22:31.175130
+4f339c3e-efef-43c4-ac16-334961610d1a,2023,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-08 11:22:31.178021
+de062237-bfb9-4a3b-aa4b-8868f7d6c91c,2023,BS001,Assets = Liabilities + Equity,FAIL,High,Assets != Liabilities + Equity.,2025-09-08 11:22:31.191095
